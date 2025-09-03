@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CifraClub Simplifier</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            padding-bottom: 100px; /* Add padding to the bottom to make space for fixed controls */
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto; /* Changed from margin: auto for better centering */
+            background: #fff;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-bar {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #dddfe2;
+            border-radius: 6px;
+            font-size: 1em;
+            min-width: 0; /* Prevents input from overflowing flex container */
+        }
+        .submit-button {
+            padding: 12px 20px;
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .submit-button:hover {
+            background-color: #166fe5;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1em;
+            line-height: 1.8;
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        b {
+            color: #d9534f; /* A color to highlight the chords */
+            font-weight: bold;
+        }
+        h2, h3, h4 {
+            margin-bottom: 0.5em;
+        }
+        h3 { font-size: 1.8em; }
+        h4 { font-size: 1.2em; color: #606770; }
+
+        /* --- Autoscroll Controls --- */
+        .scroll-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .scroll-controls button {
+            padding: 10px 15px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .scroll-controls .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* --- NEW: Responsive Styles for Mobile --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                /* Taller bottom padding to ensure content isn't hidden by potentially wrapped controls */
+                padding-bottom: 150px;
+            }
+            .container {
+                padding: 15px;
+                width: 95%; /* Use percentage width instead of fixed max-width */
+            }
+            h3 {
+                font-size: 1.5em;
+            }
+            h4 {
+                font-size: 1.1em;
+            }
+            pre {
+                font-size: 1em; /* Slightly smaller font for lyrics on mobile */
+            }
+            .scroll-controls {
+                flex-wrap: wrap; /* Allow controls to wrap onto the next line */
+                gap: 15px;
+            }
+            .search-container {
+                flex-direction: column; /* Stack search bar and button vertically */
+            }
+            .submit-button {
+                width: 100%; /* Make button full-width */
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>CifraClub Simplifier by <a href="https://github.com/lesaf92">lesaf</a></h2>
+    <form method="post" class="search-container">
+        <input type="text" name="url" class="search-bar" placeholder="Paste the Cifra Club URL here..." required>
+        <button type="submit" class="submit-button">Simplify</button>
+    </form>
+
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    {% if title and title != "Error" %}
+        <hr>
+        <h3>{{ title }}</h3>
+        <h4>{{ artist }}</h4>
+        <pre>{{ chords | safe }}</pre>
+    {% endif %}
+</div>
+
+<!-- Autoscroll Controls -->
+<div class="scroll-controls">
+    <div class="speed-control">
+        <label for="speed">Speed:</label>
+        <input type="range" id="speed" min="1" max="100" value="20">
+    </div>
+    <button id="startButton">Start</button>
+    <button id="stopButton">Stop</button>
+    <button id="resetButton">Reset to Top</button>
+</div>
+
+<script>
+    const startButton = document.getElementById('startButton');
+    const stopButton = document.getElementById('stopButton');
+    const resetButton = document.getElementById('resetButton');
+    const speedSlider = document.getElementById('speed');
+
+    let scrollInterval = null;
+
+    function startScroll() {
+        // Clear any existing interval to prevent multiple loops
+        if (scrollInterval) {
+            clearInterval(scrollInterval);
+        }
+
+        // The slider value is 1-100. Lower value = slower speed.
+        // We need to convert this to an interval delay. Higher delay = slower scroll.
+        // So, we invert the value.
+        const speed = parseInt(speedSlider.value, 10);
+        // Max delay 100ms (slowest), min delay 1ms (fastest)
+        const delay = 101 - speed;
+
+        scrollInterval = setInterval(() => {
+            window.scrollBy(0, 1); // Scroll down by 1 pixel
+        }, delay);
+    }
+
+    function stopScroll() {
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+    }
+
+    function resetScroll() {
+        stopScroll();
+        window.scrollTo(0, 0); // Go to the top of the page
+    }
+
+    startButton.addEventListener('click', startScroll);
+    stopButton.addEventListener('click', stopScroll);
+    resetButton.addEventListener('click', resetScroll);
+
+    // Optional: Update speed in real-time if the slider is moved while scrolling
+    speedSlider.addEventListener('input', () => {
+        if (scrollInterval) {
+            startScroll();
+        }
+    });
+
+</script>
+
+</body>
+</html>
+
